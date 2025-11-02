@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Superjson;
 
 use Superjson\Handler\BigIntHandlerInterface;
+use Superjson\Handler\GMPBigIntHandler;
+use Superjson\Handler\BCMathBigIntHandler;
+use Superjson\Handler\StringBigIntHandler;
 
 final readonly class SuperjsonConfig
 {
@@ -24,7 +27,32 @@ final readonly class SuperjsonConfig
      */
     public static function withAutoDetectedBigIntHandler(): self
     {
-        // Phase 2で実装
-        return new self();
+        return new self(
+            bigIntHandler: self::detectBigIntHandler()
+        );
+    }
+
+    /**
+     * 利用可能なBigIntハンドラーを自動検出
+     */
+    private static function detectBigIntHandler(): BigIntHandlerInterface
+    {
+        if (GMPBigIntHandler::isAvailable()) {
+            return new GMPBigIntHandler();
+        }
+
+        if (BCMathBigIntHandler::isAvailable()) {
+            return new BCMathBigIntHandler();
+        }
+
+        return new StringBigIntHandler();
+    }
+
+    /**
+     * BigIntハンドラーを取得（設定されていない場合は自動検出）
+     */
+    public function getBigIntHandler(): BigIntHandlerInterface
+    {
+        return $this->bigIntHandler ?? self::detectBigIntHandler();
     }
 }

@@ -31,8 +31,11 @@ final class Superjson
             throw SuperjsonException::invalidMetaStructure('Missing "json" key in payload');
         }
 
-        // json_decode(false)の場合、すでにstdClass/arrayに変換済みなのでそのまま返す
-        return $payload->json;
+        $config = $config ?? new SuperjsonConfig();
+        $meta = isset($payload->meta) ? (array)$payload->meta : null;
+
+        // メタデータを処理して型を復元
+        return self::applyMeta($payload->json, $meta, $config);
     }
 
     /**
@@ -51,14 +54,15 @@ final class Superjson
 
         $json = $payload['json'];
         $meta = $payload['meta'] ?? null;
+        $config = $config ?? new SuperjsonConfig();
 
-        // Phase 1: 基本型のみサポート（metaは後で処理）
         // 配列形式で渡された場合は、一旦stdClassに変換してから処理
         if (is_array($json)) {
             $json = self::arrayToMixed($json);
         }
 
-        return $json;
+        // メタデータを処理して型を復元
+        return self::applyMeta($json, $meta, $config);
     }
 
     /**
@@ -109,6 +113,146 @@ final class Superjson
     {
         // Phase 4で実装
         throw new \BadMethodCallException('Not implemented yet');
+    }
+
+    /**
+     * メタデータを適用して値を復元する
+     *
+     * @param mixed $value 変換する値
+     * @param array|null $meta メタデータ
+     * @param SuperjsonConfig $config 設定
+     * @return mixed 変換後の値
+     */
+    private static function applyMeta(mixed $value, ?array $meta, SuperjsonConfig $config): mixed
+    {
+        if ($meta === null || !isset($meta['values'])) {
+            return $value;
+        }
+
+        $values = (array)$meta['values'];
+
+        // メタデータの各パスに対して変換を適用
+        foreach ($values as $path => $types) {
+            $value = self::applyMetaAtPath($value, (string)$path, $types, $config);
+        }
+
+        return $value;
+    }
+
+    /**
+     * 特定のパスにメタデータを適用
+     *
+     * @param mixed $root ルート値
+     * @param string $path ドット記法のパス
+     * @param array $types 型情報の配列
+     * @param SuperjsonConfig $config 設定
+     * @return mixed 変換後の値
+     */
+    private static function applyMetaAtPath(mixed $root, string $path, array $types, SuperjsonConfig $config): mixed
+    {
+        if ($path === '') {
+            return self::transformByType($root, $types, $config);
+        }
+
+        $parts = explode('.', $path);
+        return self::applyMetaRecursive($root, $parts, $types, $config);
+    }
+
+    /**
+     * 再帰的にパスをたどってメタデータを適用
+     *
+     * @param mixed $current 現在の値
+     * @param array $pathParts パスのパーツ配列
+     * @param array $types 型情報の配列
+     * @param SuperjsonConfig $config 設定
+     * @return mixed 変換後の値
+     */
+    private static function applyMetaRecursive(mixed $current, array $pathParts, array $types, SuperjsonConfig $config): mixed
+    {
+        if (empty($pathParts)) {
+            return $current;
+        }
+
+        $key = array_shift($pathParts);
+
+        if (empty($pathParts)) {
+            // 最後のキー：変換を適用
+            if (is_object($current) && property_exists($current, $key)) {
+                $current->{$key} = self::transformByType($current->{$key}, $types, $config);
+            } elseif (is_array($current) && array_key_exists($key, $current)) {
+                $current[$key] = self::transformByType($current[$key], $types, $config);
+            }
+        } else {
+            // 中間のキー：再帰的に処理
+            if (is_object($current) && property_exists($current, $key)) {
+                $current->{$key} = self::applyMetaRecursive($current->{$key}, $pathParts, $types, $config);
+            } elseif (is_array($current) && array_key_exists($key, $current)) {
+                $current[$key] = self::applyMetaRecursive($current[$key], $pathParts, $types, $config);
+            }
+        }
+
+        return $current;
+    }
+
+    /**
+     * 型情報に基づいて値を変換
+     *
+     * @param mixed $value 変換する値
+     * @param array $types 型情報の配列
+     * @param SuperjsonConfig $config 設定
+     * @return mixed 変換後の値
+     */
+    private static function transformByType(mixed $value, array $types, SuperjsonConfig $config): mixed
+    {
+        foreach ($types as $type) {
+            $value = match ($type) {
+                'Date' => self::parseDate($value),
+                'bigint' => self::parseBigInt($value, $config),
+                default => $value,
+            };
+        }
+
+        return $value;
+    }
+
+    /**
+     * Date文字列をDateTimeImmutableに変換
+     *
+     * @param mixed $value 変換する値
+     * @return \DateTimeImmutable
+     */
+    private static function parseDate(mixed $value): \DateTimeImmutable
+    {
+        if ($value instanceof \DateTimeImmutable) {
+            return $value;
+        }
+
+        if (!is_string($value)) {
+            throw SuperjsonException::invalidMetaStructure('Date value must be a string');
+        }
+
+        try {
+            return new \DateTimeImmutable($value);
+        } catch (\Exception $e) {
+            throw SuperjsonException::invalidMetaStructure("Invalid date format: {$value}");
+        }
+    }
+
+    /**
+     * BigInt文字列を適切な型に変換
+     *
+     * @param mixed $value 変換する値
+     * @param SuperjsonConfig $config 設定
+     * @return string|\GMP
+     */
+    private static function parseBigInt(mixed $value, SuperjsonConfig $config): string|\GMP
+    {
+        if (!is_string($value)) {
+            throw SuperjsonException::invalidMetaStructure('BigInt value must be a string');
+        }
+
+        $handler = $config->getBigIntHandler();
+        return $handler->parse($value);
     }
 
     /**
