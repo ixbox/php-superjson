@@ -11,18 +11,30 @@ describe('BCMathBigIntHandler', function () {
         }
     });
 
-    it('文字列をそのまま返す', function () {
+    it('BigInt文字列をパースできる', function () {
         $handler = new BCMathBigIntHandler();
         $result = $handler->parse('9007199254741992');
 
-        expect($result)->toBe('9007199254741992');
+        // PHP 8.4+ では BcMath\Number、それ以前では文字列
+        if (PHP_VERSION_ID >= 80400) {
+            expect($result)->toBeInstanceOf(\BcMath\Number::class)
+                ->and((string)$result)->toBe('9007199254741992');
+        } else {
+            expect($result)->toBe('9007199254741992');
+        }
     });
 
     it('負の数をパースできる', function () {
         $handler = new BCMathBigIntHandler();
         $result = $handler->parse('-9007199254741992');
 
-        expect($result)->toBe('-9007199254741992');
+        // PHP 8.4+ では BcMath\Number、それ以前では文字列
+        if (PHP_VERSION_ID >= 80400) {
+            expect($result)->toBeInstanceOf(\BcMath\Number::class)
+                ->and((string)$result)->toBe('-9007199254741992');
+        } else {
+            expect($result)->toBe('-9007199254741992');
+        }
     });
 
     it('整数を文字列に変換できる', function () {

@@ -243,9 +243,9 @@ final class Superjson
      *
      * @param mixed $value 変換する値
      * @param SuperjsonConfig $config 設定
-     * @return string|\GMP
+     * @return string|object BigInt表現（string, \GMP, \BcMath\Number など）
      */
-    private static function parseBigInt(mixed $value, SuperjsonConfig $config): string|\GMP
+    private static function parseBigInt(mixed $value, SuperjsonConfig $config): string|object
     {
         if (!is_string($value)) {
             throw SuperjsonException::invalidMetaStructure('BigInt value must be a string');

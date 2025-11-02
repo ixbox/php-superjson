@@ -108,7 +108,7 @@ describe('BigIntのパース（BCMathハンドラー）', function () {
         }
     });
 
-    it('BigInt型を文字列にパースできる', function () {
+    it('BigInt型をパースできる', function () {
         $json = '{
             "json": {"count": "9007199254741992"},
             "meta": {"values": {"count": ["bigint"]}, "v": 1}
@@ -116,9 +116,16 @@ describe('BigIntのパース（BCMathハンドラー）', function () {
         $config = new SuperjsonConfig(bigIntHandler: new BCMathBigIntHandler());
         $result = Superjson::parse($json, $config);
 
-        expect($result)->toBeInstanceOf(stdClass::class)
-            ->and($result->count)->toBeString()
-            ->and($result->count)->toBe('9007199254741992');
+        expect($result)->toBeInstanceOf(stdClass::class);
+
+        // PHP 8.4+ では BcMath\Number、それ以前では文字列
+        if (PHP_VERSION_ID >= 80400) {
+            expect($result->count)->toBeInstanceOf(\BcMath\Number::class)
+                ->and((string)$result->count)->toBe('9007199254741992');
+        } else {
+            expect($result->count)->toBeString()
+                ->and($result->count)->toBe('9007199254741992');
+        }
     });
 });
 
@@ -150,8 +157,10 @@ describe('BigIntハンドラーの自動検出', function () {
         $config = SuperjsonConfig::withAutoDetectedBigIntHandler();
         $result = Superjson::parse($json, $config);
 
-        // GMPまたは文字列のいずれかである
-        $isValid = $result->count instanceof GMP || is_string($result->count);
+        // GMP、BcMath\Number、または文字列のいずれかである
+        $isValid = $result->count instanceof GMP
+            || (PHP_VERSION_ID >= 80400 && $result->count instanceof \BcMath\Number)
+            || is_string($result->count);
         expect($isValid)->toBeTrue();
     });
 });

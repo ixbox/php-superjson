@@ -14,10 +14,16 @@ final readonly class GMPBigIntHandler implements BigIntHandlerInterface
         return gmp_init($value);
     }
 
-    public function stringify(string|int|\GMP $value): string
+    public function stringify(string|int|object $value): string
     {
         if ($value instanceof \GMP) {
             return gmp_strval($value);
+        }
+
+        if (is_object($value)) {
+            throw new \InvalidArgumentException(
+                'GMPBigIntHandler only supports GMP objects, not ' . get_class($value)
+            );
         }
 
         return (string)$value;
