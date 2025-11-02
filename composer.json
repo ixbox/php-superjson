@@ -1,0 +1,28 @@
+{
+  "name": "ixbox/php-superjson",
+  "type": "library",
+  "autoload": {
+    "psr-4": {
+      "Superjson\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "require": {
+    "php": "^8.1"
+  },
+  "require-dev": {
+    "pestphp/pest": "^4.1"
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  },
+  "scripts": {
+    "test": "pest"
+  }
+}
