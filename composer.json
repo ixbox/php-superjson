@@ -30,8 +30,8 @@
     "sort-packages": true
   },
   "scripts": {
-    "test": "pest",
-    "test:coverage": "pest --coverage"
+    "test": "vendor/bin/pest",
+    "test:coverage": "vendor/bin/pest --coverage"
   },
   "minimum-stability": "stable",
   "prefer-stable": true
