@@ -1,6 +1,8 @@
 {
   "name": "ixbox/php-superjson",
+  "description": "PHP implementation of superjson with compatibility for Node.js superjson",
   "type": "library",
+  "license": "MIT",
   "autoload": {
     "psr-4": {
       "Superjson\\": "src/"
@@ -12,17 +14,25 @@
     }
   },
   "require": {
-    "php": "^8.1"
+    "php": "^8.2"
   },
   "require-dev": {
     "pestphp/pest": "^4.1"
   },
+  "suggest": {
+    "ext-gmp": "For better BigInt support (recommended)",
+    "ext-bcmath": "Alternative for BigInt support"
+  },
   "config": {
     "allow-plugins": {
       "pestphp/pest-plugin": true
-    }
+    },
+    "sort-packages": true
   },
   "scripts": {
-    "test": "pest"
-  }
+    "test": "pest",
+    "test:coverage": "pest --coverage"
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
 }
